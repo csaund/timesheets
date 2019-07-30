@@ -1,0 +1,56 @@
+---
+title: "timesheet analysis"
+author: "csaund"
+date: "7/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+```
+
+
+Let's check out what's up
+```{r}
+atd <- read.csv('detailed.csv')
+```
+
+So looks like I entered `r nrow(all_time_data)` instances of timekeeping -- broken down by category (of which all possibilities are `r unique(atd$Task)`), looks like this:
+
+```{r}
+## TODO figure out how many entires per category
+nrow(filter(atd, Task=="In The Office / Actively Working Elsewhere"))
+
+```
+
+This is the real fun bit, the meat of what I wanted to know: when do I actually GSD?
+
+Spoiler alert: this is going to be D I S G U S T I N G
+```{r}
+work_hours <- atd %>%
+  filter(Task=="In The Office / Actively Working Elsewhere" | # pick out the good bits
+         Task=="Classwork" | 
+         Task=="In Class") %>%
+  separate(Timestamp, c("start_time", "end_time"), sep="-") # separate into start and end times
+
+## Frankly I'm just going to convert everything into minutes and deal with it that way
+## cause time is DUMB.
+hours_to_minutes <- function(timestring) {
+  s <- strsplit(timestring, " ")
+  if(length(s[[1]]) < 2) {
+    # only minutes in this bad boy
+    return(as.numeric(gsub("[a-zA-Z ]", "", s[[1]][1])))
+  }
+  hours <- as.numeric(gsub("[a-zA-Z ]", "", s[[1]][1]))
+  minutes <- as.numeric(gsub("[a-zA-Z ]", "", s[[1]][2]))
+  total_min <- (hours * 60) + minutes
+  return(total_min)
+}
+
+work_hours$total_minutes <- lapply(as.character(work_hours$Time), hours_to_minutes)
+
+```
+
